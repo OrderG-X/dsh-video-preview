@@ -1,0 +1,4 @@
+# Bundle patch for dsh-video-preview
+- insert:
+    - id: dsh-video-preview
+      name: dsh-video-preview
