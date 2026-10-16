@@ -1,6 +1,10 @@
 # dsh-video-preview
 
+![hero](assets/hero.png)
+
 让 DSH（DeepSeek Harness）的对话流里直接播放本地视频/音频：说一句「用 play_video 播 xxx.mp4」，播放器就出现在最终输出的正下方——Claude 桌面端 / Codex 同款位置，不用点任何东西。
+
+![demo](assets/demo.gif)
 
 ## 它解决什么
 

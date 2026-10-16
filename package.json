@@ -9,25 +9,43 @@
     "type": "git",
     "url": "git+https://github.com/OrderG-X/dsh-video-preview.git"
   },
-  "keywords": ["dsh", "deepseek-harness", "dsh-plugin", "video", "player"],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "video",
+    "player"
+  ],
   "exports": {
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
     "./package.json": "./package.json",
     "./cordis.patch.yml": "./cordis.patch.yml"
   },
-  "files": ["lib", "cordis.patch.yml", "README.md"],
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "assets"
+  ],
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web",
-      "inject": ["@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-ui-slots"]
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ]
     }
   },
   "peerDependencies": {
     "@deepseek-ai/dsh-tools": ">=0.1.2-rc.1 <0.3.0-0"
   },
   "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-tools": { "optional": true }
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
   }
 }
