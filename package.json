@@ -1,9 +1,9 @@
 {
   "name": "dsh-video-preview",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Inline video playback for DeepSeek Harness: a play_video tool plus a native <video> renderer in the chat stream, served by a Range-capable streaming route.",
+  "description": "Inline video and audio playback for DeepSeek Harness: a play_video tool plus a native player under the reply and in the sidebar, served by a guarded, Range-capable streaming route.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -20,14 +20,19 @@
     ".": "./lib/index.js",
     "./client": "./lib/client.js",
     "./package.json": "./package.json",
-    "./cordis.patch.yml": "./cordis.patch.yml"
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./icon.svg": "./icon.svg",
+    "./locale/*.json": "./locale/*.json"
   },
   "files": [
     "lib",
+    "locale",
+    "icon.svg",
     "cordis.patch.yml",
     "README.md",
     "assets"
   ],
+  "icon": "./icon.svg",
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"

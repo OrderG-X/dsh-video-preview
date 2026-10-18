@@ -1,10 +1,20 @@
-# dsh-video-preview
+# dsh-video-preview · 视频播放
 
 ![hero](assets/hero.png)
 
-让 DSH（DeepSeek Harness）的对话流里直接播放本地视频/音频：说一句「用 play_video 播 xxx.mp4」，播放器就出现在最终输出的正下方——Claude 桌面端 / Codex 同款位置，不用点任何东西。
+让 DSH（DeepSeek Harness）的对话流里直接播放本地视频 / 音频：模型录屏、转码、配音生成的文件，回合结束时播放器自动出现在回复正下方——Claude 桌面端 / Codex 同款位置，不用点任何东西，也不用模型专门调工具。说一句「播一下 ~/Movies/a.mp4」也行。
 
 ![demo](assets/demo.gif)
+
+## 安装
+
+```sh
+dsh plugin add https://github.com/OrderG-X/dsh-video-preview/releases/latest/download/dsh-video-preview.tgz
+```
+
+装完**重启 DSH**（客户端代码在 DSH 启动时打包，不重启看不到播放器）。DSH「插件」页里显示为「视频播放」。
+
+开发时可以直接链到本地目录：`dsh plugin --profile desktop add link:/path/to/dsh-video-preview`，改了代码同样要重启。
 
 ## 它解决什么
 
@@ -12,39 +22,28 @@ DSH 的消息渲染块只有 text / image / file / table，**没有 video**，�
 
 一次 `play_video` 调用后，用户能看到：
 
-1. **turnTail 内联播放器**（主显示位）——渲染在每轮输出的收尾区，紧跟模型回复，原生 `<video controls>`，可拖进度条
-2. **deliverable 文件芯片**——输出里原生可见的文件条，点「在侧边栏预览」打开大屏播放器
-3. **侧边栏预览 = 播放器**——注册了 `documentPreviews` 媒体渲染器，侧边栏预览面板直接播放（DSH 原生把 mp4 列为「不可预览」，这里接管）
-4. **工具块小播放器**（兜底）——展开工具调用块后可见
+1. **回复下方的播放器**（主显示位）——小卡片，一个一行：
+   - 视频只露画面（200 高、按原比例），角上标时长；鼠标移上去静音预览、浮出文件名 / 大小 / 下载，点一下从头带声音播
+   - 音频是一条细条：圆形播放键、文件名、大小、时长、可拖的进度条
+   - 超过 3 个先折叠成「还有 N 个媒体文件」；同一时间只有一个在出声
+   - 配色、圆角、字体用 DSH 自己的设计变量，深浅色主题跟着走
+2. **交付文件芯片**——点「在侧边栏预览」打开大屏播放器（DSH 原生把 mp4 列为「不可预览」，这里接管）
+3. **工具块里的小播放器**（兜底）——展开工具调用块后可见
 
-附带福利：模型用自带 `present` 工具交付的媒体文件，也会自动获得 turnTail 内联播放器。
+模型用自带 `present` 工具交付的媒体文件，也会自动出现播放器。
 
-## 架构
+## 自动播放（不用调工具）
 
-```
-服务端  play_video 工具 ──校验文件──▶ 返回带签名的 URL
-            │
-            └─append deliverables/presented 事件（官方 present 工具同款通道）
-路由    /dsh-video-preview/media    签名 token 鉴权 · HTTP Range 流式（大文件不进内存）
-        /dsh-video-preview/preview  宿主登录 cookie 鉴权 · 供侧边栏/turnTail
-客户端  turnTail 槽 / documentPreviews 渲染器 / toolview 槽
-```
+模型这一轮里生成的视频 / 音频（录屏、ffmpeg / avconvert 转码、`say` 配音……），回合收尾时自动挂上播放器：
 
-签名密钥持久化在 `~/.dsh/cache/dsh-video-preview.secret`（0600），token = HMAC(密钥， 文件绝对路径)——同一台机器上 URL 跨重启、跨宿主（web / 桌面端）都有效。
-
-支持格式：mp4 / webm / mov / m4v / mkv / avi / ogv / ts / 3gp / flv，音频 mp3 / wav / ogg / m4a / aac / flac / opus / weba / wma。
-
-## 安装
-
-```sh
-dsh plugin --profile desktop add link:/path/to/dsh-video-preview
-```
-
-装完**必须重启 DSH**（ESM 有缓存，客户端 bundle 的 rev 在宿主启动时算死，不重启不生效）。改了插件代码同理。
+- **怎么找**：从这一轮的命令参数、命令输出、回复正文里挖出媒体文件路径（带空格、中文、`~`、相对路径、shell 转义都认）
+- **挂哪些**：只挂这一轮里新写出来的文件，以前就有的不挂；回复正文提到的优先，没提才用命令里的，中间文件不刷屏；一轮最多 8 个
+- **不重复**：已经用 `play_video` / `present` 播过的不再挂
+- **中途停掉**：来不及在收尾时挂，会在回合结束后补上（重新打开会话可见）
 
 ## 用法
 
-对话里直接说「用 play_video 播 /Users/me/Movies/a.mp4」。参数：
+对话里直接说「播一下 /Users/me/Movies/a.mp4」，模型会调 `play_video`。参数：
 
 | 参数 | 必填 | 说明 |
 | --- | --- | --- |
@@ -53,14 +52,64 @@ dsh plugin --profile desktop add link:/path/to/dsh-video-preview
 | `autoplay` | 否 | 自动播放（浏览器通常会拦） |
 | `loop` | 否 | 循环播放 |
 
-## 结构
+## 能播什么
 
-- `lib/index.js` —— 服务端：工具 + deliverables 事件 + 两条流式路由
-- `lib/client.js` —— 客户端：turnTail 播放器 / 侧边栏预览渲染器 / toolview 兜底（`exports.inject` 是客户端**短服务名**，写包名会一直 pending）
+DSH 的播放器是 Chromium 内核，能播什么由它决定：
+
+| | 格式 |
+| --- | --- |
+| 能播 | 视频 mp4 / m4v / mov / webm / ogv，音频 mp3 / wav / ogg / m4a / aac / flac / opus |
+| 看编码 | mkv / 3gp：要看文件里的编码，播不了会在播放器下面说明并给出转码命令 |
+| 播不了 | avi / flv / wmv / wma / ts / mpg / rmvb 等 —— `play_video` 会直接说明，并给出转码命令 |
+
+转码（需要 [ffmpeg](https://ffmpeg.org/)，macOS 上 `brew install ffmpeg`）：
+
+```sh
+ffmpeg -i in.avi -c:v libx264 -c:a aac -movflags +faststart out.mp4   # 视频
+ffmpeg -i in.wma -c:a aac out.m4a                                      # 音频
+```
+
+播放出错时，播放器下面会告诉你是哪种情况：文件被移走了、没有权限、插件没加载（要重启 DSH），还是编码不支持（附转码命令）。
+
+## 安全
+
+DSH 的本地网页服务本身不做鉴权，浏览器里任何网页都摸得到 `127.0.0.1`，所以两条播放路由自己把门：
+
+- **只给媒体文件**：按扩展名判断，软链接按它指向的真实文件算；别的文件一律 403。
+- **防 DNS 重绑定和跨站**：Host 必须是本机名或 DSH 自己的地址；跨站请求、Origin 不是 DSH 自己的都拒。
+- **签名地址**（`/dsh-video-preview/media`）：token = HMAC(密钥, 文件绝对路径)，密钥存在 `~/.dsh/cache/dsh-video-preview.secret`（0600），同一台机器上跨重启、跨宿主都有效。
+- **侧边栏 / 回复下方的地址**（`/dsh-video-preview/preview`，没有 token）：交给 DSH 自己的 `connection` 服务验登录 cookie；老版本 DSH 没有这个服务时只收本机连接。
+
+v0.3.0 之前的版本只看 cookie 名字，网页能伪造 cookie 读到任意文件，请升级。
+
+## 架构
+
+```
+服务端  play_video 工具 ──校验文件──▶ 返回带签名的 URL
+            │
+            └─append deliverables/presented 事件（官方 present 工具同款通道）
+自动    session/event 收集这一轮的路径 → agent/turn-stopping 时挑出新文件 → 同一条通道
+路由    /dsh-video-preview/media    签名 token · HTTP Range 流式（大文件不进内存）
+        /dsh-video-preview/preview  DSH 登录态 · 供侧边栏 / 回复下方的播放器
+客户端  turnTail 槽 / documentPreviews 渲染器 / toolview 槽
+```
+
+- `lib/index.js` —— 服务端：工具 + deliverables 事件 + 两条流式路由（读盘出错只断当前请求，不会带崩 DSH）
+- `lib/auto-present.js` —— 自动播放：挖路径、挑新文件、回合收尾前呈现（回合结束后才 append 的话，界面要重开会话才刷出来）
+- `lib/client.js` —— 客户端：回复下方播放器 / 侧边栏预览 / 工具块兜底 / 出错诊断（`exports.inject` 是客户端**短服务名**，写包名会一直 pending）
+- `locale/*.json`、`icon.svg` —— DSH 插件页的卡片标题、说明和图标
 - `cordis.patch.yml` —— bundle patch（insert 行的 `name` 必须是完整包名，客户端按它解析 bundle）
+
+## 测试
+
+```sh
+node test/test-routes.mjs   # 把门、Range、HEAD、读盘出错、工具的格式提示
+node test/test-client.mjs   # 三个挂载点、视频卡 / 音频条、折叠、出错诊断
+node test/test-auto.mjs     # 自动播放：新 / 老文件、正文优先、各种路径写法、不重复、重放不动手
+```
 
 ## 已验证
 
-web 端与桌面端（DeepSeek Harness 0.2.0-rc.2）端到端实测：turnTail 播放器 `playing: true`、1920px 解码、seek/Range/缓冲全通、跨宿主 URL 无 403。
+DeepSeek Harness 0.2.1-rc.2 桌面端端到端实测：回复下方播放器（mp4 / HEVC 的 mov / m4a，中文文件名）、侧边栏预览和播放、avi 的转码提示、文件被移走后的出错提示；伪造登录 cookie 的请求被拒；模型用 say / avconvert 生成的 m4a、mp4（含带空格的中文文件名）没调 `play_video`，回合结束时播放器实时出现且能播；视频卡悬停预览 / 点击播放 / 下载、音频条播放、超过 3 个时折叠展开、深浅两种主题下的配色。
 
 参考实现：[@goodandready/dsh-image-gen](https://www.npmjs.com/package/@goodandready/dsh-image-gen)（客户端插件套路）与官方 `dsh-tool-present`（deliverables 通道）。
