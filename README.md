@@ -1,4 +1,14 @@
-# dsh-video-preview · 视频播放
+<div align="center">
+
+<img src="assets/hero.svg" alt="dsh-video-preview — 模型录屏、配音做完，播放器自动出现在回复下面" width="760" />
+
+<p>
+  <a href="https://github.com/OrderG-X/dsh-video-preview/releases"><img src="https://img.shields.io/github/v/release/OrderG-X/dsh-video-preview?label=release&color=4D6BFE" alt="release" /></a>
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT" />
+  <a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin"><img src="https://img.shields.io/badge/DSH-plugin-4D6BFE" alt="DSH plugin" /></a>
+</p>
+
+</div>
 
 ![hero](assets/hero.png)
 
