@@ -11,6 +11,7 @@ import os from 'node:os'
 import path from 'node:path'
 import http from 'node:http'
 import crypto from 'node:crypto'
+import { execFileSync } from 'node:child_process'
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dvp-test-'))
 process.env.HOME = tmp
@@ -26,6 +27,7 @@ const files = {
   locked: path.join(dir, 'locked.mp4'),
   avi: path.join(dir, 'old.avi'),
   wma: path.join(dir, 'old.wma'),
+  evil: path.join(dir, `bad $(echo PWNED) \`echo X\` "q" it's.avi`),
   missing: path.join(dir, 'gone.mp4'),
 }
 fs.writeFileSync(files.mp4, body)
@@ -36,6 +38,7 @@ fs.symlinkSync(files.txt, files.link)
 fs.writeFileSync(files.locked, body)
 fs.writeFileSync(files.avi, body)
 fs.writeFileSync(files.wma, body)
+fs.writeFileSync(files.evil, body)
 
 const { apply } = await import(new URL('../lib/index.js', import.meta.url))
 
@@ -51,7 +54,8 @@ apply({
     getOrigin: () => `http://127.0.0.1:${port}`,
   },
   tools: { register: (t) => tools.set(t.name, t) },
-  sessionProjections: { stateOf: () => ({ lastTurn: 3 }) },
+  // 和 DSH 一样：会话里切过的目录在 workingDirectory 投影里，没切过就是 undefined
+  sessionProjections: { stateOf: (s, key) => (key === 'turnBoundary' ? { lastTurn: 3 } : key === 'workingDirectory' ? s.wd : undefined) },
   get: (name) => (name === 'connection' ? conn : undefined),
 })
 
@@ -134,6 +138,21 @@ try {
   r = await get(media(files.missing))
   check('文件不在 → 404', r.status === 404, r.status)
 
+  // 读盘全走异步：网络盘失联时只卡这一个请求，不卡整个宿主
+  const syncCalls = []
+  const saved = {}
+  for (const k of ['statSync', 'realpathSync', 'accessSync', 'lstatSync', 'existsSync']) {
+    saved[k] = fs[k]
+    fs[k] = (...a) => { syncCalls.push(k); return saved[k](...a) }
+  }
+  try {
+    r = await get(media(files.mp4))
+    const r2 = await get(preview(files.mp4))
+    check('媒体路由不用同步读盘', r.status === 200 && r2.status === 200 && syncCalls.length === 0, syncCalls.join(','))
+  } finally {
+    Object.assign(fs, saved)
+  }
+
   fs.chmodSync(files.locked, 0)
   r = await get(media(files.locked))
   check('没权限读的文件 → 403，不往外抛错', r.status === 403, r.status)
@@ -177,10 +196,22 @@ try {
 
   // ── play_video 工具 ──
   const tool = tools.get('play_video')
-  const exec = { callId: 'c1', agent: { session: { append: (type, data) => appended.push({ type, data }) } } }
-  const out = await tool.execute({ path: files.mp4, title: '样片' }, exec)
+  const exec = { callId: 'c1', agent: { session: { header: { cwd: tmp }, append: (type, data) => appended.push({ type, data }) } } }
+  const out = await tool.execute({ path: files.mp4, title: '样片', loop: true }, exec)
   check('工具：mp4 → 带签名的地址', out.url === media(files.mp4) && out.kind === 'video', out.url)
   check('工具：作为交付文件呈现', appended.length === 1 && appended[0].type === 'deliverables/presented' && appended[0].data.turn === 3)
+  const pf = appended[0] && appended[0].data.files[0]
+  check('工具：title / loop 跟着交付文件走（回复下方的播放器要读）', pf && pf.path === files.mp4 && pf.title === '样片' && pf.loop === true && !('autoplay' in pf), JSON.stringify(pf))
+
+  // 相对路径按会话的工作目录算，不按 DSH 进程的目录
+  const inSession = (cwd, wd) => ({ callId: 'c2', agent: { session: { header: { cwd }, wd, append: () => {} } } })
+  let rel = await tool.execute({ path: 'a.mp4' }, inSession(dir))
+  check('工具：相对路径按会话头里的 cwd 算', rel.url === media(files.mp4), rel.url)
+  rel = await tool.execute({ path: 'media/b.m4a' }, inSession('/nonexistent', tmp))
+  check('工具：会话里切过目录 → 按切过的目录算', rel.url === media(files.m4a), rel.url)
+  const call = tool.presentCall({ path: 'a.mp4' })
+  check('工具块预览：相对路径拿不到会话就不签名（不按进程目录猜）', call.url === '' && call.name === 'a.mp4', JSON.stringify(call))
+  check('工具块预览：绝对路径照常签名', tool.presentCall({ path: files.mp4 }).url === media(files.mp4))
   const errOf = async (args) => { try { await tool.execute(args, {}); return '' } catch (e) { return e.message } }
   let m = await errOf({ path: files.avi })
   check('工具：avi → 说清楚播不了 + ffmpeg 转 mp4', /放不了 \.avi/.test(m) && m.includes('ffmpeg') && m.includes('old.mp4'), m)
@@ -192,6 +223,14 @@ try {
   check('工具：文件不在 → 找不到文件', m.includes('找不到文件'), m)
   m = await errOf({ path: '~/media/a.mp4' })
   check('工具：支持 ~ 开头的路径', m === '', m)
+  m = await errOf({ path: 'media/a.mp4' })
+  check('工具：相对路径又没有会话 → 要绝对路径', m.includes('绝对路径'), m)
+
+  // 转码命令交给 sh 解析一遍（ffmpeg 换成 printf）：文件名里的 $(...)、反引号、引号都只是字面
+  m = await errOf({ path: files.evil })
+  const cmd = (m.split('\n').find((l) => l.startsWith('ffmpeg ')) || '').replace(/^ffmpeg /, "printf '%s\\n' ")
+  const argv = cmd ? execFileSync('/bin/sh', ['-c', cmd], { encoding: 'utf8' }).split('\n').slice(0, -1) : []
+  check('工具：转码命令里的文件名不会被 shell 执行', argv[1] === files.evil && argv.at(-1) === files.evil.replace(/\.avi$/, '.mp4') && !argv.some((a) => a.includes('PWNED') && !a.includes('$(')), JSON.stringify(argv))
 } finally {
   server.close()
   fs.rmSync(tmp, { recursive: true, force: true })
