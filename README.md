@@ -14,6 +14,14 @@
 
 让 DSH（DeepSeek Harness）的对话流里直接播放本地视频 / 音频：模型录屏、转码、配音生成的文件，回合结束时播放器自动出现在回复正下方——Claude 桌面端 / Codex 同款位置，不用点任何东西，也不用模型专门调工具。说一句「播一下 ~/Movies/a.mp4」也行。
 
+> **一句话**：DeepSeek Harness（DSH）插件，在对话里直接播放本地视频和音频。模型录屏、转码、配音做出来的文件，播放器自动出现在回复下面；别的文件用 `play_video` 工具播。
+>
+> **什么时候用**：「录个屏」「把视频转成 mp4」「生成一段配音」之后，想直接在对话里看、听。
+>
+> **安装**：`dsh plugin add https://github.com/OrderG-X/dsh-video-preview/releases/latest/download/dsh-video-preview.tgz`，重启 DSH。
+>
+> **English:** a DeepSeek Harness (DSH) plugin that plays local video and audio inline in the chat. Files the model makes (screen recordings, transcodes, voiceovers) get a player under its reply automatically, and the `play_video` tool plays any other file. Install with the `dsh plugin add` command above, then restart DSH.
+
 ![demo](assets/demo.gif)
 
 ## 安装
