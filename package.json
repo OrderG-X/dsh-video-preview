@@ -1,7 +1,6 @@
 {
-  "name": "dsh-video-preview",
-  "version": "0.3.1",
-  "private": true,
+  "name": "@orderg-x/dsh-video-preview",
+  "version": "0.4.0",
   "type": "module",
   "description": "Inline video and audio playback for DeepSeek Harness: a play_video tool plus a native player under the reply and in the sidebar, served by a guarded, Range-capable streaming route.",
   "license": "MIT",

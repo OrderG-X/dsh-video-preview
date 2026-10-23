@@ -18,7 +18,7 @@
 >
 > **什么时候用**：「录个屏」「把视频转成 mp4」「生成一段配音」之后，想直接在对话里看、听。
 >
-> **安装**：`dsh plugin add https://github.com/OrderG-X/dsh-video-preview/releases/latest/download/dsh-video-preview.tgz`，重启 DSH。
+> **安装**：`dsh plugin add @orderg-x/dsh-video-preview`（npm 包），重启 DSH。
 >
 > **English:** a DeepSeek Harness (DSH) plugin that plays local video and audio inline in the chat. Files the model makes (screen recordings, transcodes, voiceovers) get a player under its reply automatically, and the `play_video` tool plays any other file. Install with the `dsh plugin add` command above, then restart DSH.
 
@@ -27,10 +27,12 @@
 ## 安装
 
 ```sh
-dsh plugin add https://github.com/OrderG-X/dsh-video-preview/releases/latest/download/dsh-video-preview.tgz
+dsh plugin add @orderg-x/dsh-video-preview
 ```
 
-装完**重启 DSH**（客户端代码在 DSH 启动时打包，不重启看不到播放器）。DSH「插件」页里显示为「视频播放」。
+也可以直接装发布包：`dsh plugin add https://github.com/OrderG-X/dsh-video-preview/releases/latest/download/dsh-video-preview.tgz`。装完**重启 DSH**（客户端代码在 DSH 启动时打包，不重启看不到播放器）。DSH「插件」页里显示为「视频播放」。
+
+> **从 0.3.x 升级**：0.4.0 起包名改成 `@orderg-x/dsh-video-preview`（npm 上的 `dsh-video-preview` 是别人的包）。装上新版后，到「插件」页把旧的「dsh-video-preview」移除，再重启 DSH。旧版还在时新版不会启动，旧版照常能用；以前对话里的视频链接都还能播。
 
 开发时可以直接链到本地目录：`dsh plugin --profile desktop add link:/path/to/dsh-video-preview`，改了代码同样要重启。
 

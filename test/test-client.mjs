@@ -24,15 +24,47 @@ globalThis.window = { __ModuleLoader__: { load: ({ factory }) => { mod = factory
 globalThis.location = { href: 'http://127.0.0.1:1234/' }
 new Function(src)()
 
-const slots = []
-const previews = []
-const ctx = {
-  slots: { register: (opts, render) => { slots.push({ opts, render }); return () => {} } },
-  documentPreviews: { register: (o) => previews.push(o) },
-  locale: { register: () => {}, t: () => '' },
-  effect: (fn) => fn(),
+const PKG = '@orderg-x/dsh-video-preview'
+const tick = () => new Promise((r) => setTimeout(r, 0))
+const heads = []
+// 服务端每个回应都带 X-DSH-Video-Preview：新版的值是包名，旧版是 '1'；null = 路由还没挂上
+const serving = (who) => async (url, init) => {
+  heads.push(`${(init && init.method) || 'GET'} ${url}`)
+  return { status: who ? 403 : 404, ok: false, headers: { get: (k) => (k === 'x-dsh-video-preview' ? who : null) } }
 }
+function fakeCtx() {
+  const c = { slots: [], previews: [], disposers: [] }
+  c.ctx = {
+    slots: { register: (opts, render) => { c.slots.push({ opts, render }); return () => {} } },
+    documentPreviews: { register: (o) => c.previews.push(o) },
+    locale: { register: () => {}, t: () => '' },
+    effect: (fn) => { const d = fn(); if (typeof d === 'function') c.disposers.push(d) },
+  }
+  return c
+}
+
+// 改名后旧版 dsh-video-preview 还装着：是旧版服务端在应答，新版客户端一个槽都不挂
+globalThis.fetch = serving('1')
+const old = fakeCtx()
+mod.apply(old.ctx)
+await tick()
+const oldCopyQuiet = old.slots.length === 0 && old.previews.length === 0 && heads[0] === 'HEAD /dsh-video-preview/preview'
+// 路由还没挂上（宿主刚起）：先不挂，过一会儿再问；插件被停用就别再问了
+heads.length = 0
+globalThis.fetch = serving(null)
+const early = fakeCtx()
+mod.apply(early.ctx)
+await tick()
+const earlyQuiet = early.slots.length === 0 && heads.length === 1
+early.disposers.forEach((d) => d())
+await new Promise((r) => setTimeout(r, 2100))
+const stopsAfterDispose = heads.length === 1
+
+globalThis.fetch = serving(PKG)
+const own = fakeCtx()
+const { slots, previews, ctx } = own
 mod.apply(ctx)
+await tick()
 
 let pass = 0
 let fail = 0
@@ -59,6 +91,10 @@ function findAll(el, pred, out = []) {
   if (pred(el)) out.push(el)
   return findAll(el.children, pred, out)
 }
+
+check('旧版服务端在应答（改名后旧版还装着）→ 新版客户端一个槽都不挂', oldCopyQuiet, JSON.stringify({ slots: old.slots.length, heads }))
+check('路由还没挂上 → 先不挂，等会儿再问', earlyQuiet)
+check('插件停用后不再去问', stopsAfterDispose, heads.join(','))
 
 const names = slots.map((s) => s.opts.name)
 check('挂上 toolview / turnTail / 侧边栏三个槽', ['tool.call.toolview', 'conversation.chat.turnTail', 'sidebar.right.tab.document'].every((n) => names.includes(n)), names.join(','))

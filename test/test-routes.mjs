@@ -40,7 +40,7 @@ fs.writeFileSync(files.avi, body)
 fs.writeFileSync(files.wma, body)
 fs.writeFileSync(files.evil, body)
 
-const { apply } = await import(new URL('../lib/index.js', import.meta.url))
+const { apply, oldCopyLoaded, PKG, OLD_PKG } = await import(new URL('../lib/index.js', import.meta.url))
 
 const routes = new Map()
 const tools = new Map()
@@ -95,7 +95,7 @@ function check(name, ok, extra = '') {
 try {
   // ── media（带签名）──
   let r = await get(media(files.mp4))
-  check('media：签名对 → 200 + 整个文件 + 标记头', r.status === 200 && r.body.equals(body) && r.headers['x-dsh-video-preview'] === '1', r.status)
+  check('media：签名对 → 200 + 整个文件 + 标记头', r.status === 200 && r.body.equals(body) && r.headers['x-dsh-video-preview'] === '@orderg-x/dsh-video-preview', r.status)
   check('media：Content-Type 是 video/mp4', r.headers['content-type'] === 'video/mp4', r.headers['content-type'])
   r = await get(media(files.mp4), { headers: { range: 'bytes=2-5' } })
   check('Range 2-5 → 206 + 对应字节', r.status === 206 && r.body.toString() === '2345' && r.headers['content-range'] === `bytes 2-5/${body.length}`, `${r.status} ${r.headers['content-range']}`)
@@ -186,7 +186,7 @@ try {
 
   conn = { requestRejection: (req) => (String(req.headers.cookie || '').includes('dsh-auth-good=ok') ? undefined : 401) }
   r = await get(preview(files.mp4))
-  check('preview：交给 DSH 验登录，没 cookie → 401', r.status === 401 && r.headers['x-dsh-video-preview'] === '1', r.status)
+  check('preview：交给 DSH 验登录，没 cookie → 401', r.status === 401 && r.headers['x-dsh-video-preview'] === '@orderg-x/dsh-video-preview', r.status)
   r = await get(preview(files.mp4), { headers: { cookie: 'dsh-auth-forged=1' } })
   check('preview：伪造的 cookie → 401', r.status === 401, r.status)
   r = await get(preview(files.mp4), { headers: { cookie: 'dsh-auth-good=ok', range: 'bytes=0-3' } })
@@ -231,6 +231,23 @@ try {
   const cmd = (m.split('\n').find((l) => l.startsWith('ffmpeg ')) || '').replace(/^ffmpeg /, "printf '%s\\n' ")
   const argv = cmd ? execFileSync('/bin/sh', ['-c', cmd], { encoding: 'utf8' }).split('\n').slice(0, -1) : []
   check('工具：转码命令里的文件名不会被 shell 执行', argv[1] === files.evil && argv.at(-1) === files.evil.replace(/\.avi$/, '.mp4') && !argv.some((a) => a.includes('PWNED') && !a.includes('$(')), JSON.stringify(argv))
+
+  // 改名后旧版 dsh-video-preview 还装着、启用着：新版不挂路由、不注册工具
+  check('改名：包名 / 旧包名', PKG === '@orderg-x/dsh-video-preview' && OLD_PKG === 'dsh-video-preview')
+  const ctxOf = (data) => ({ fiber: { entry: { parent: { data } } } })
+  const mine = { id: 'orderg-x-video-preview', name: PKG }
+  check('改名：只有新版 → 正常启动', !oldCopyLoaded(ctxOf([mine])) && !oldCopyLoaded(ctxOf(undefined)) && !oldCopyLoaded(undefined))
+  check('改名：旧版停用了 → 正常启动', !oldCopyLoaded(ctxOf([{ id: 'dsh-video-preview', name: OLD_PKG, disabled: true }, mine])))
+  let effects = 0
+  let registered = 0
+  const warned = []
+  apply({
+    ...ctxOf([{ id: 'dsh-video-preview', name: OLD_PKG }, mine]),
+    effect: () => { effects++ },
+    tools: { register: () => { registered++ } },
+    logger: { warn: (w) => warned.push(w) },
+  })
+  check('改名：旧版也在 → 新版不挂路由、不注册工具，记一条日志', effects === 0 && registered === 0 && warned.length === 1, JSON.stringify({ effects, registered, warned }))
 } finally {
   server.close()
   fs.rmSync(tmp, { recursive: true, force: true })

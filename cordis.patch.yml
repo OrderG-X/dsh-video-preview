@@ -1,4 +1,5 @@
-# Bundle patch for dsh-video-preview
+# Bundle patch for @orderg-x/dsh-video-preview
+# The row id differs from the old dsh-video-preview package's, so both can sit in a profile without a duplicate-id error.
 - insert:
-    - id: dsh-video-preview
-      name: dsh-video-preview
+    - id: orderg-x-video-preview
+      name: '@orderg-x/dsh-video-preview'
