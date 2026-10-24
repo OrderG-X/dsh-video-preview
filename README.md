@@ -133,3 +133,7 @@ node test/test-auto.mjs     # 自动播放：新 / 老文件、正文优先、�
 DeepSeek Harness 0.2.1-rc.2 桌面端端到端实测：回复下方播放器（mp4 / HEVC 的 mov / m4a，中文文件名）、侧边栏预览和播放、avi 的转码提示、文件被移走后的出错提示；伪造登录 cookie 的请求被拒；模型用 say / avconvert 生成的 m4a、mp4（含带空格的中文文件名）没调 `play_video`，回合结束时播放器实时出现且能播；视频卡悬停预览 / 点击播放 / 下载、音频条播放、超过 3 个时折叠展开、深浅两种主题下的配色。
 
 参考实现：[@goodandready/dsh-image-gen](https://www.npmjs.com/package/@goodandready/dsh-image-gen)（客户端插件套路）与官方 `dsh-tool-present`（deliverables 通道）。
+
+## 反馈
+
+遇到问题或想要新功能，[提一个 issue](https://github.com/OrderG-X/dsh-video-preview/issues/new/choose)。报问题时写上 DSH 版本和插件版本，修起来最快。
