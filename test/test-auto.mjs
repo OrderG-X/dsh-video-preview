@@ -11,7 +11,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dvp-auto-'))
-process.env.HOME = tmp
+process.env.HOME = process.env.USERPROFILE = tmp
 const { autoPresent, candidatesIn, fromBashPath } = await import(new URL('../lib/auto-present.js', import.meta.url))
 
 const dir = path.join(tmp, 'My Movies')

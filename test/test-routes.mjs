@@ -14,7 +14,7 @@ import crypto from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dvp-test-'))
-process.env.HOME = tmp
+process.env.HOME = process.env.USERPROFILE = tmp
 const dir = path.join(tmp, 'media')
 fs.mkdirSync(dir)
 const body = Buffer.from('0123456789abcdef')
