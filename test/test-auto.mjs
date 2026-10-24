@@ -12,7 +12,7 @@ import path from 'node:path'
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dvp-auto-'))
 process.env.HOME = tmp
-const { autoPresent, candidatesIn } = await import(new URL('../lib/auto-present.js', import.meta.url))
+const { autoPresent, candidatesIn, fromBashPath } = await import(new URL('../lib/auto-present.js', import.meta.url))
 
 const dir = path.join(tmp, 'My Movies')
 fs.mkdirSync(dir)
@@ -56,6 +56,11 @@ let fail = 0
 function check(name, ok, extra = '') {
   if (ok) { pass++; console.log(`✓ ${name}`) } else { fail++; console.log(`✗ ${name} ${extra}`) }
 }
+
+check('Git Bash 路径 /c/Users/… → C:\\Users\\…（Windows）', fromBashPath('/c/Users/张三/a b/x.mp4', 'win32') === 'C:\\Users\\张三\\a b\\x.mp4', fromBashPath('/c/Users/张三/a b/x.mp4', 'win32'))
+check('Git Bash 路径：只有盘符 /d → D:\\', fromBashPath('/d', 'win32') === 'D:\\')
+check('Git Bash 路径：不是盘符开头的不动', fromBashPath('/Users/x/a.mp4', 'win32') === '/Users/x/a.mp4')
+check('Git Bash 路径：别的系统不动', fromBashPath('/c/x.mp4', 'darwin') === '/c/x.mp4')
 
 let seq = 0
 /** 跑一轮：events 里是 [type, data]，返回回合结束后 append 出来的东西 */

@@ -27,7 +27,8 @@ const files = {
   locked: path.join(dir, 'locked.mp4'),
   avi: path.join(dir, 'old.avi'),
   wma: path.join(dir, 'old.wma'),
-  evil: path.join(dir, `bad $(echo PWNED) \`echo X\` "q" it's.avi`),
+  // Windows 的文件名里不能有双引号
+  evil: path.join(dir, process.platform === 'win32' ? `bad $(echo PWNED) \`echo X\` it's.avi` : `bad $(echo PWNED) \`echo X\` "q" it's.avi`),
   missing: path.join(dir, 'gone.mp4'),
 }
 fs.writeFileSync(files.mp4, body)
@@ -153,12 +154,14 @@ try {
     Object.assign(fs, saved)
   }
 
-  fs.chmodSync(files.locked, 0)
-  r = await get(media(files.locked))
-  check('没权限读的文件 → 403，不往外抛错', r.status === 403, r.status)
-  r = await get(media(files.mp4))
-  check('……而且服务还活着', r.status === 200, r.status)
-  fs.chmodSync(files.locked, 0o644)
+  if (process.platform !== 'win32') { // Windows 上 chmod 拦不住读
+    fs.chmodSync(files.locked, 0)
+    r = await get(media(files.locked))
+    check('没权限读的文件 → 403，不往外抛错', r.status === 403, r.status)
+    r = await get(media(files.mp4))
+    check('……而且服务还活着', r.status === 200, r.status)
+    fs.chmodSync(files.locked, 0o644)
+  }
 
   const big = path.join(dir, 'big.mp4')
   fs.writeFileSync(big, Buffer.alloc(32 << 20))
@@ -229,7 +232,7 @@ try {
   // 转码命令交给 sh 解析一遍（ffmpeg 换成 printf）：文件名里的 $(...)、反引号、引号都只是字面
   m = await errOf({ path: files.evil })
   const cmd = (m.split('\n').find((l) => l.startsWith('ffmpeg ')) || '').replace(/^ffmpeg /, "printf '%s\\n' ")
-  const argv = cmd ? execFileSync('/bin/sh', ['-c', cmd], { encoding: 'utf8' }).split('\n').slice(0, -1) : []
+  const argv = cmd ? execFileSync('sh', ['-c', cmd], { encoding: 'utf8' }).split('\n').slice(0, -1) : []
   check('工具：转码命令里的文件名不会被 shell 执行', argv[1] === files.evil && argv.at(-1) === files.evil.replace(/\.avi$/, '.mp4') && !argv.some((a) => a.includes('PWNED') && !a.includes('$(')), JSON.stringify(argv))
 
   // 改名后旧版 dsh-video-preview 还装着、启用着：新版不挂路由、不注册工具

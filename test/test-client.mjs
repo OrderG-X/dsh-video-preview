@@ -171,7 +171,7 @@ async function diagnoseWith(response, file = '/m/x.mkv') {
   return { reason, text: shown, cmd: code ? text(code) : '' }
 }
 /** 让 sh 真的解析一遍转码命令（ffmpeg 换成 printf），看拿到的参数是不是原样的路径 */
-const shArgs = (cmd) => execFileSync('/bin/sh', ['-c', cmd.replace(/^ffmpeg /, "printf '%s\\n' ")], { encoding: 'utf8' }).split('\n').slice(0, -1)
+const shArgs = (cmd) => execFileSync('sh', ['-c', cmd.replace(/^ffmpeg /, "printf '%s\\n' ")], { encoding: 'utf8' }).split('\n').slice(0, -1)
 const ok = (status) => ({ status, ok: status >= 200 && status < 300, headers: { get: (k) => (k === 'x-dsh-video-preview' ? '1' : null) } })
 let d = await diagnoseWith(ok(200))
 check('出错 + 服务端 200 → 编码不支持，给 ffmpeg 命令', d.reason === 'unsupported' && d.cmd.startsWith("ffmpeg -i '/m/x.mkv'") && d.cmd.endsWith("'/m/x-h264.mp4'"), d.cmd)
