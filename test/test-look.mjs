@@ -50,7 +50,7 @@ check('默认帧数随长短变', frameCount(2) === 4 && frameCount(8) === 6 && 
   const port = sheetLayout(1080, 1920, 9)
   const rows = (l, n) => Math.ceil(n / l.cols)
   check('拼图：横屏 9 帧 3 列', land.cols === 3 && land.cw > 400 && Math.abs(land.ch / land.cw - 1080 / 1920) < 0.01)
-  check('拼图：竖屏 9 帧 5 列，整张高不超过 1568', port.cols === 5 && rows(port, 9) * port.ch + (rows(port, 9) + 1) * port.gap <= 1568, JSON.stringify(port))
+  check('拼图：竖屏 9 帧 5 列，整张高不超过 1568', port.cols === 5 && rows(port, 9) * (port.ch + port.lh) + (rows(port, 9) + 1) * port.gap <= 1568, JSON.stringify(port))
   check('拼图：4 帧 2 列', sheetLayout(1280, 720, 4).cols === 2)
 }
 
@@ -86,6 +86,13 @@ check('没声的段：只算 1.5 秒以上的', JSON.stringify(silences(win([[-8
   check('画面：几帧一模一样 → 可能没动', still.some((x) => /几乎一模一样/.test(x.text)))
   const run = frameFindings([fr(0, 10, 30, fp(10)), ...[1, 2, 3, 4, 5].map((t) => fr(t, 100)), fr(6, 200, 30, fp(200))], { duration: 6 })
   check('画面：中间一大段没变', run.some((x) => /0:01–0:05 画面没变（5 帧一样）/.test(x.text)), JSON.stringify(run))
+  // 录屏里只有一小块在变（一张卡片滑进来）：64×36 里变了几十格，不算没动；只有 2 格在变（光标闪）算没动
+  const base = Array(2304).fill(240)
+  const withCard = (k) => base.map((v, i) => (Math.floor(i / 64) >= 2 + k * 6 && Math.floor(i / 64) < 6 + k * 6 && i % 64 > 30 ? 255 : v))
+  const cards = frameFindings([0, 1, 2, 3, 4].map((k) => fr(k, 240, 10, withCard(k))), { duration: 5 })
+  check('画面：录屏里只有一块在变也算在动', cards.length === 0, JSON.stringify(cards))
+  const blink = frameFindings([0, 1, 2, 3, 4].map((k) => fr(k, 240, 10, base.map((v, i) => (i === 100 && k % 2 ? 0 : i === 101 && k % 2 ? 0 : v)))), { duration: 5 })
+  check('画面：只有光标在闪 → 算没动', blink.some((x) => /几乎一模一样/.test(x.text)), JSON.stringify(blink))
   const moving = frameFindings([0, 1, 2, 3].map((t) => fr(t, 50 + t * 40, 30, fp(50 + t * 40))), { duration: 4 })
   check('画面：在动、不黑 → 没问题', moving.length === 0)
   const bad = frameFindings([fr(0, 100), fr(1, 120, 30, fp(120), false)], { duration: 2 })
