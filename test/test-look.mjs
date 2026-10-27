@@ -306,10 +306,9 @@ if (!bin) {
   })()`))
   try {
     const t0 = Date.now()
-    const [a, still] = await Promise.all([
-      record({ seconds: 4, blackUntil: 1.2, toneUntil: 1.5, type: 'video/webm;codecs=vp8,opus' }),
-      record({ seconds: 3, still: true, noAudio: true, type: 'video/webm;codecs=vp8' }),
-    ])
+    // 一段一段录：同时录两段时，慢机器上后台页面的计时器会被放慢，录出来的片子变短
+    const a = await record({ seconds: 4, blackUntil: 1.2, toneUntil: 1.5, type: 'video/webm;codecs=vp8,opus' })
+    const still = await record({ seconds: 3.5, still: true, noAudio: true, type: 'video/webm;codecs=vp8' })
     const fa = path.join(tmp, 'black-left.webm')
     const fs2 = path.join(tmp, 'still.webm')
     fs.writeFileSync(fa, Buffer.from(a.b64, 'base64'))
