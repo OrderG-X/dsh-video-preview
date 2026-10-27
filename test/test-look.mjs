@@ -292,7 +292,8 @@ if (!bin) {
     const t0 = performance.now()
     const draw = () => {
       const t = (performance.now() - t0) / 1000
-      if (o.still) { g.fillStyle = '#3366cc'; g.fillRect(0, 0, 320, 180); g.fillStyle = '#fff'; g.font = '30px sans-serif'; g.fillText('STILL', 20, 100) }
+      // 「不动」的画面也让角上一个点每帧变一下：一模一样的帧编码器可能直接丢掉，录出来只剩一帧
+      if (o.still) { g.fillStyle = '#3366cc'; g.fillRect(0, 0, 320, 180); g.fillStyle = '#fff'; g.font = '30px sans-serif'; g.fillText('STILL', 20, 100); g.fillStyle = Math.round(t * 30) % 2 ? '#3366cd' : '#3367cc'; g.fillRect(319, 179, 1, 1) }
       else if (t < o.blackUntil) { g.fillStyle = '#000'; g.fillRect(0, 0, 320, 180) }
       else { g.fillStyle = 'hsl(' + Math.round(t * 120) + ',70%,50%)'; g.fillRect(0, 0, 320, 180); g.fillStyle = '#fff'; g.fillRect((t * 80) % 320, 60, 40, 60) }
       vt.requestFrame()
