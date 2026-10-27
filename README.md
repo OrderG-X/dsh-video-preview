@@ -14,13 +14,15 @@
 
 让 DSH（DeepSeek Harness）的对话流里直接播放本地视频 / 音频：模型录屏、转码、配音生成的文件，回合结束时播放器自动出现在回复正下方——Claude 桌面端 / Codex 同款位置，不用点任何东西，也不用模型专门调工具。说一句「播一下 ~/Movies/a.mp4」也行。
 
-> **一句话**：DeepSeek Harness（DSH）插件，在对话里直接播放本地视频和音频。模型录屏、转码、配音做出来的文件，播放器自动出现在回复下面；别的文件用 `play_video` 工具播。
+模型自己也能「看」：`look_video` 按时间截几帧拼成一张图交给模型，顺便量声音、找黑屏、查手机能不能播——做完视频它能自己检查，你说「不对」时它能看到你说的是哪一段。
+
+> **一句话**：DeepSeek Harness（DSH）插件，在对话里直接播放本地视频和音频。模型录屏、转码、配音做出来的文件，播放器自动出现在回复下面；别的文件用 `play_video` 工具播；模型用 `look_video` 自己看画面、听声音。
 >
 > **什么时候用**：「录个屏」「把视频转成 mp4」「生成一段配音」之后，想直接在对话里看、听。
 >
 > **安装**：`dsh plugin add @orderg-x/dsh-video-preview`（npm 包），重启 DSH。
 >
-> **English:** a DeepSeek Harness (DSH) plugin that plays local video and audio inline in the chat. Files the model makes (screen recordings, transcodes, voiceovers) get a player under its reply automatically, and the `play_video` tool plays any other file. Install with the `dsh plugin add` command above, then restart DSH.
+> **English:** a DeepSeek Harness (DSH) plugin that plays local video and audio inline in the chat. Files the model makes (screen recordings, transcodes, voiceovers) get a player under its reply automatically, and the `play_video` tool plays any other file. The `look_video` tool lets the model see a video itself: a contact sheet of frames, plus checks for silence, black frames and phone compatibility. Install with the `dsh plugin add` command above, then restart DSH.
 
 ![demo](assets/demo.gif)
 
@@ -72,6 +74,24 @@ DSH 的消息渲染块只有 text / image / file / table，**没有 video**，�
 | `autoplay` | 否 | 自动播放（浏览器通常会拦） |
 | `loop` | 否 | 循环播放 |
 
+## 模型自己看视频（look_video）
+
+模型看不了视频文件本身，`look_video` 替它看：
+
+- **截帧拼图**：按时长均匀截 4–12 帧，拼成一张图交给模型，每格标时间；也可以只看一段（`from` / `to`），或者要某几刻的大图（`at`，最多 6 张）
+- **听声音**：整段几乎没声、开头 / 结尾 / 中间没声、声音太小、爆音（削波）、只有一边声道
+- **看画面**：黑屏（第一帧黑会让封面变黑）、整段画面没动、中间一大段卡住
+- **手机能不能播**：读 mp4 / mov 文件头（不解码），查编码（H.264 10bit / 4:4:4、hev1、AC-3、ALAC……）、文件头在末尾（网页要下完才能播）、超过 4K、没录完；有问题给出 ffmpeg 改法
+
+怎么做的：在本机一个看不见的 Chrome / Edge 里打开视频截帧、解码声音（和设计工作台的体检同一套），看一次一秒左右。没装 Chrome / Edge 时只给文件头信息。
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| `path` | 是 | 本地文件路径（视频或音频） |
+| `at` | 否 | 要看大图的时间点，例如 `["0:12", "1:05.5"]` |
+| `from` / `to` | 否 | 只看这一段 |
+| `frames` | 否 | 拼图里截几帧（默认按时长，最多 16） |
+
 ## 能播什么
 
 DSH 的播放器是 Chromium 内核，能播什么由它决定：
@@ -109,12 +129,17 @@ v0.3.0 之前的版本只看 cookie 名字，网页能伪造 cookie 读到任意
             │
             └─append deliverables/presented 事件（官方 present 工具同款通道）
 自动    session/event 收集这一轮的路径 → agent/turn-stopping 时挑出新文件 → 同一条通道
+看视频  look_video ──读文件头（probe）──▶ 临时本机服务（随机口令、只收本机、Range）
+            └─无头 Chrome / Edge 截帧 + 解码声音 ──▶ 拼图存进 DSH 附件库，图和体检结果一起交给模型
 路由    /dsh-video-preview/media    签名 token · HTTP Range 流式（大文件不进内存）
         /dsh-video-preview/preview  DSH 登录态 · 供侧边栏 / 回复下方的播放器
 客户端  turnTail 槽 / documentPreviews 渲染器 / toolview 槽
 ```
 
 - `lib/index.js` —— 服务端：工具 + deliverables 事件 + 两条流式路由（读盘出错只断当前请求，不会带崩 DSH）
+- `lib/look.js` —— look_video：取帧时间、浏览器里截帧拼图和量声音、声音 / 画面的问题、给模型的字
+- `lib/probe.js` —— 读 mp4 / mov 的盒子（不解码）：编码、时长、帧率、旋转、文件头位置，手机兼容规则
+- `lib/browser.js` —— 无头 Chrome / Edge（CDP 管道，闲置自动关）
 - `lib/auto-present.js` —— 自动播放：挖路径、挑新文件、回合收尾前呈现（回合结束后才 append 的话，界面要重开会话才刷出来）
 - `lib/client.js` —— 客户端：回复下方播放器 / 侧边栏预览 / 工具块兜底 / 出错诊断（`exports.inject` 是客户端**短服务名**，写包名会一直 pending）
 - `locale/*.json`、`icon.svg` —— DSH 插件页的卡片标题、说明和图标
@@ -126,11 +151,14 @@ v0.3.0 之前的版本只看 cookie 名字，网页能伪造 cookie 读到任意
 node test/test-routes.mjs   # 把门、Range、HEAD、读盘出错、工具的格式提示
 node test/test-client.mjs   # 三个挂载点、视频卡 / 音频条、折叠、出错诊断
 node test/test-auto.mjs     # 自动播放：新 / 老文件、正文优先、各种路径写法、不重复、重放不动手
+node test/test-look.mjs     # look_video：手搓 mp4 测编码规则；有 Chrome / Edge 时现录视频测黑屏、单声道、没声、画面不动
 ```
 
 ## 已验证
 
 DeepSeek Harness 0.2.1-rc.2 桌面端端到端实测：回复下方播放器（mp4 / HEVC 的 mov / m4a，中文文件名）、侧边栏预览和播放、avi 的转码提示、文件被移走后的出错提示；伪造登录 cookie 的请求被拒；模型用 say / avconvert 生成的 m4a、mp4（含带空格的中文文件名）没调 `play_video`，回合结束时播放器实时出现且能播；视频卡悬停预览 / 点击播放 / 下载、音频条播放、超过 3 个时折叠展开、深浅两种主题下的配色。
+
+`look_video` 在同一台机器的 DSH 桌面端用 DeepSeek-V4.1-Flash 实测：用户说「三个视频帮我看看有没有问题」，模型自己对三个文件调 `look_video`，答出黑屏、爆音、HEVC / WebM 在别处放不了；问「1 秒左右是不是闪了一下」，模型用 `from` / `to` 逐帧看了那一小段，11 秒答出是黑场硬切到亮色。
 
 参考实现：[@goodandready/dsh-image-gen](https://www.npmjs.com/package/@goodandready/dsh-image-gen)（客户端插件套路）与官方 `dsh-tool-present`（deliverables 通道）。
 
