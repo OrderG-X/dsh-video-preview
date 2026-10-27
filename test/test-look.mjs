@@ -15,6 +15,8 @@ import http from 'node:http'
 import { spawn } from 'node:child_process'
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dvp-look-'))
+// 浏览器要用真的用户目录：Windows 上 USERPROFILE 指到临时目录时，Chrome / Edge 连不上管道
+const realEnv = { ...process.env }
 process.env.HOME = process.env.USERPROFILE = tmp
 
 const { parseTime, fmtTime, frameCount, pickTimes, sheetLayout, silences, audioFindings, frameFindings, formatLook, inspect, MAX_FRAMES } = await import(new URL('../lib/look.js', import.meta.url))
@@ -257,7 +259,7 @@ if (!bin) {
   console.log('（这台电脑上没有 Chrome / Edge，跳过真浏览器测试）')
 } else {
   // 录样片要在页面里出声：放开自动播放限制（插件自己不需要，它只解码不播放）
-  const launch = (b, args, o) => spawn(b, ['--autoplay-policy=no-user-gesture-required', ...args], o)
+  const launch = (b, args, o) => spawn(b, ['--autoplay-policy=no-user-gesture-required', ...args], { ...o, env: realEnv })
   const b = createBrowser({ bin, launch })
   const gen = http.createServer((req, res) => { res.writeHead(200, { 'Content-Type': 'text/html' }); res.end('<!doctype html><meta charset="utf-8"><body>') })
   await new Promise((ok) => gen.listen(0, '127.0.0.1', ok))
@@ -343,6 +345,8 @@ if (!bin) {
       const res = await inspect(b, { page: srv.page, src: srv.src, kind: 'video', from: 2, to: 3, frames: 3, wantAudio: false })
       check('真浏览器：from / to 只在那一段取', res.times.length === 3 && res.times[0] === 2 && res.times[2] < 3 && res.audio === null, JSON.stringify(res.times))
     } finally { await srv.close() }
+  } catch (e) {
+    check('真浏览器：能开、能录、能看', false, e && e.message)
   } finally {
     b.destroy()
     gen.close()
