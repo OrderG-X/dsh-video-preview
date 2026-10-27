@@ -151,7 +151,7 @@ v0.3.0 之前的版本只看 cookie 名字，网页能伪造 cookie 读到任意
 node test/test-routes.mjs   # 把门、Range、HEAD、读盘出错、工具的格式提示
 node test/test-client.mjs   # 三个挂载点、视频卡 / 音频条、折叠、出错诊断
 node test/test-auto.mjs     # 自动播放：新 / 老文件、正文优先、各种路径写法、不重复、重放不动手
-node test/test-look.mjs     # look_video：手搓 mp4 测编码规则；有 Chrome / Edge 时现录视频测黑屏、单声道、没声、画面不动
+node test/test-look.mjs     # look_video：手搓 mp4 测编码规则；有 Chrome / Edge 时用 test/fixtures 的样片测黑屏、单声道、没声、画面不动
 ```
 
 ## 已验证
