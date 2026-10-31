@@ -20,23 +20,27 @@
 >
 > **什么时候用**：「录个屏」「把视频转成 mp4」「生成一段配音」之后，想直接在对话里看、听。
 >
-> **安装**：`dsh plugin add @orderg-x/dsh-video-preview`（npm 包），重启 DSH。
+> **安装**：DSH「插件」页 →「添加插件」，填 `@orderg-x/dsh-video-preview`（npm 包，连不上 npm 会自动换国内镜像），重启 DSH。
 >
-> **English:** a DeepSeek Harness (DSH) plugin that plays local video and audio inline in the chat. Files the model makes (screen recordings, transcodes, voiceovers) get a player under its reply automatically, and the `play_video` tool plays any other file. The `look_video` tool lets the model see a video itself: a contact sheet of frames, plus checks for silence, black frames and phone compatibility. Install with the `dsh plugin add` command above, then restart DSH.
+> **English:** a DeepSeek Harness (DSH) plugin that plays local video and audio inline in the chat. Files the model makes (screen recordings, transcodes, voiceovers) get a player under its reply automatically, and the `play_video` tool plays any other file. The `look_video` tool lets the model see a video itself: a contact sheet of frames, plus checks for silence, black frames and phone compatibility. Install: on the DSH Plugins page, click Add plugin and enter `@orderg-x/dsh-video-preview`, then restart DSH.
 
 ![demo](assets/demo.gif)
 
 ## 安装
 
-```sh
-dsh plugin add @orderg-x/dsh-video-preview
+在 DSH「插件」页点「添加插件」，填包名：
+
+```
+@orderg-x/dsh-video-preview
 ```
 
-也可以直接装发布包：`dsh plugin add https://github.com/OrderG-X/dsh-video-preview/releases/latest/download/dsh-video-preview.tgz`。装完**重启 DSH**（客户端代码在 DSH 启动时打包，不重启看不到播放器）。DSH「插件」页里显示为「视频播放」。
+这是 npm 包：按包名装时，DSH 连不上 npm 官方源会自动改用国内镜像（npmmirror），不经过 GitHub。也可以填发布包地址 `https://github.com/OrderG-X/dsh-video-preview/releases/latest/download/dsh-video-preview.tgz`，那样要能连上 GitHub。
+
+装完**重启 DSH**（客户端代码在 DSH 启动时打包，不重启看不到播放器）。DSH「插件」页里显示为「视频播放」。
 
 > **从 0.3.x 升级**：0.4.0 起包名改成 `@orderg-x/dsh-video-preview`（npm 上的 `dsh-video-preview` 是别人的包）。装上新版后，到「插件」页把旧的「dsh-video-preview」移除，再重启 DSH。旧版还在时新版不会启动，旧版照常能用；以前对话里的视频链接都还能播。
 
-开发时可以直接链到本地目录：`dsh plugin --profile desktop add link:/path/to/dsh-video-preview`，改了代码同样要重启。
+开发时可以直接链到本地目录：在「添加插件」里填本仓库的绝对路径，装上的是 `link:`，改了代码同样要重启。
 
 ## 它解决什么
 
