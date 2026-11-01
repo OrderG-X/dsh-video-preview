@@ -197,6 +197,40 @@ try {
   r = await get(preview('/etc/hosts'), { headers: { cookie: 'dsh-auth-good=ok' } })
   check('preview：登录了也不给非媒体文件', r.status === 403, r.status)
 
+  // ── direct（桌面版换直连地址）──
+  const direct = (f) => `/dsh-video-preview/direct?p=${encodeURIComponent(f)}`
+  r = await get(direct(files.mp4))
+  check('direct：没登录 → 401', r.status === 401, r.status)
+  r = await get(direct(files.txt), { headers: { cookie: 'dsh-auth-good=ok' } })
+  check('direct：登录了也不给非媒体文件', r.status === 403, r.status)
+  r = await get(direct('a.mp4'), { headers: { cookie: 'dsh-auth-good=ok' } })
+  check('direct：相对路径 → 403', r.status === 403, r.status)
+  r = await get(direct(files.mp4), { headers: { cookie: 'dsh-auth-good=ok' } })
+  const dsrc = r.status === 200 ? JSON.parse(r.body.toString()).src : ''
+  check('direct：登录了 → 本机的绝对地址', dsrc.startsWith(`http://127.0.0.1:${port}/dsh-video-preview/media?d=`) && r.headers['cache-control'] === 'no-store', `${r.status} ${dsrc}`)
+  const durl = new URL(dsrc || 'http://x/')
+  const dpath = durl.pathname + durl.search
+  // 桌面版页面在 dsh-app:// 下，<video> 的请求一律是跨站、不带 Origin
+  r = await get(dpath, { headers: { 'sec-fetch-site': 'cross-site', range: 'bytes=4-7' } })
+  check('direct 地址：跨站也给 + Range 正常（桌面版能拖进度条）', r.status === 206 && r.body.toString() === '4567', r.status)
+  r = await get(dpath, { headers: { host: `evil.example:${port}` } })
+  check('direct 地址：Host 不是本机 → 403', r.status === 403, r.status)
+  r = await get(dpath.replace(encodeURIComponent(files.mp4), encodeURIComponent(files.m4a)))
+  check('direct 地址：换个文件 → 403', r.status === 403, r.status)
+  const e = Number(durl.searchParams.get('e'))
+  r = await get(dpath.replace(`e=${e}`, `e=${e + 1}`))
+  check('direct 地址：改到期时间 → 403', r.status === 403, r.status)
+  const old = Math.floor(Date.now() / 1000) - 10
+  const stale = crypto.createHmac('sha256', secret).update(`direct\n${old}\n${files.mp4}`).digest('hex').slice(0, 32)
+  r = await get(`/dsh-video-preview/media?d=${stale}&e=${old}&p=${encodeURIComponent(files.mp4)}`)
+  check('direct 地址：过期 → 403', r.status === 403, r.status)
+  const far = Math.floor(Date.now() / 1000) + 30 * 24 * 3600
+  const long = crypto.createHmac('sha256', secret).update(`direct\n${far}\n${files.mp4}`).digest('hex').slice(0, 32)
+  r = await get(`/dsh-video-preview/media?d=${long}&e=${far}&p=${encodeURIComponent(files.mp4)}`)
+  check('direct 地址：到期时间超过七天 → 403', r.status === 403, r.status)
+  r = await get(media(files.mp4), { headers: { 'sec-fetch-site': 'cross-site' } })
+  check('普通签名地址照旧不收跨站', r.status === 403, r.status)
+
   // ── play_video 工具 ──
   const tool = tools.get('play_video')
   const exec = { callId: 'c1', agent: { session: { header: { cwd: tmp }, append: (type, data) => appended.push({ type, data }) } } }
