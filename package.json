@@ -1,6 +1,6 @@
 {
   "name": "@orderg-x/dsh-video-preview",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "type": "module",
   "scripts": {
     "test": "node --test --test-concurrency=1 test/*.mjs"
@@ -32,6 +32,7 @@
     "icon.svg",
     "cordis.patch.yml",
     "README.md",
+    "README.en.md",
     "assets"
   ],
   "icon": "./icon.svg",

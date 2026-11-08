@@ -8,6 +8,11 @@
   <a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin"><img src="https://img.shields.io/badge/DSH-plugin-4D6BFE" alt="DSH plugin" /></a>
 </p>
 
+<p>
+  <a href="README.md"><b>简体中文</b></a> ·
+  <a href="README.en.md">English</a>
+</p>
+
 </div>
 
 ![hero](assets/hero.png)

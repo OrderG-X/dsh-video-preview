@@ -1,6 +1,7 @@
 {
   "meta": {
     "title": "Video Player",
+    "detail": "README.en.md",
     "description": "Plays local video and audio right in the chat: recordings and voiceovers the model makes get a player under the reply automatically, and open full-size in the sidebar. The model can also look at a video itself: frame contact sheets, audio checks and phone compatibility."
   }
 }
