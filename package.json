@@ -1,6 +1,6 @@
 {
   "name": "@orderg-x/dsh-video-preview",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "type": "module",
   "scripts": {
     "test": "node --test --test-concurrency=1 test/*.mjs"
